@@ -8,6 +8,7 @@
 #include <sstream>
 #include "authPopup.hpp"
 #include "RpcDisplay.hpp"
+#include "RpcSettings.hpp"
 
 using namespace geode::prelude;
 
@@ -43,6 +44,24 @@ static std::string sanitizeAuth(std::string key) {
         }
     }
     return key;
+}
+
+$on_mod(Loaded) {
+    ButtonSettingPressedEventV3(Mod::get(), "show-settings").listen([](auto buttonKey) {
+        if (buttonKey == "toggle") {
+            auto accountManager = GJAccountManager::get();
+            int localAccountID = accountManager->m_accountID;
+            if (localAccountID == 0) {
+                FLAlertLayer::create(
+                    "Error", 
+                    "You must be logged into a <cg>Geometry Dash</c> account to use this button, you silly lil goober :3", 
+                    "OK"
+                )->show();
+                return;
+            }
+            RpcSettingsPopup::create(localAccountID)->show();
+        }
+    }).leak();
 }
 
 class $modify(RPCProfilePage, ProfilePage) {

@@ -17,6 +17,12 @@
         ]
     },
 	"settings": {
+		"show-settings": {
+			"type": "button",
+			"buttons": {
+				"toggle": "Show account settings"
+			}
+		},
         "firebase-url": {
             "name": "Firebase Database URL",
             "type": "string",
