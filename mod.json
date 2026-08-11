@@ -1,0 +1,31 @@
+{
+	"geode": "5.8.2",
+	"gd": {
+		"win": "2.2081",
+		"android": "2.2081",
+		"mac": "2.2081",
+		"ios": "2.2081"
+	},
+	"id": "bluetoadmaker.discord-rpc-linker",
+	"name": "Discord RPC Linker",
+	"version": "v1.0.0",
+	"developer": "BlueToadMaker",
+	"description": "Shows your Discord Status on Geometry Dash!",
+	"resources": {
+        "sprites": [
+            "resources/*"
+        ]
+    },
+	"settings": {
+        "firebase-url": {
+            "name": "Firebase Database URL",
+            "type": "string",
+            "default": "https://discordgdlinker-default-rtdb.firebaseio.com",
+            "description": "The root URL of the Firebase Realtime Database.\n\nNote: DO NOT CHANGE THIS IF YOU DON'T KNOW WHAT YOU'RE DOING",
+			"match": "^https://[a-zA-Z0-9.-]+\\.firebaseio\\.com/?$"
+        }
+    },
+	"dependencies": {
+		"geode.node-ids": ">=v1.23.3"
+	}
+}
