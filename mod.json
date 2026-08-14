@@ -1,5 +1,5 @@
 {
-	"geode": "5.8.2",
+	"geode": "5.9.0",
 	"gd": {
 		"win": "2.2081",
 		"android": "2.2081",
@@ -31,6 +31,7 @@
 			"match": "^https://[a-zA-Z0-9.-]+\\.firebaseio\\.com/?$"
         }
     },
+	"tags": ["online"],
 	"dependencies": {
 		"geode.node-ids": ">=v1.23.3"
 	}

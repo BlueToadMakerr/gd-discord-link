@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Authentication Failed</title>
+</head>
+<body>
+    <h1>Something went wrong.. Try again?</h1>
+    <p>Error reason: <span id="error-reason"></span></p>
+    
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const reason = urlParams.get('reason');
+        document.getElementById('error-reason').innerText = reason || "Unknown error";
+    </script>
+</body>
+</html>

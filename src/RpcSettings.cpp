@@ -1,9 +1,7 @@
-#include "RpcSettings.hpp"
 #include <Geode/utils/web.hpp>
 #include <Geode/utils/async.hpp>
 #include <Geode/ui/Notification.hpp>
-
-// TODO: Add a button to config in settings!
+#include "RpcSettings.hpp"
 
 std::string RpcSettingsPopup::getFirebaseUrl() {
     std::string baseUrl = Mod::get()->getSettingValue<std::string>("firebase-url");
@@ -21,7 +19,11 @@ bool RpcSettingsPopup::init(int accountID) {
     this->setTitle("RPC Settings");
     
     if (m_uid.empty()) {
-        FLAlertLayer::create("Error", "No local UID found! Try re-authenticating.", "OK")->show();
+        FLAlertLayer::create(
+        "Error", "No verified account was found on this device!\n\n"
+        "If you have an account, you may need to reauth.\n"
+        "If you don't have an account.. then why are you here...",
+        "OK")->show();
         this->onClose(nullptr);
         return true;
     }
@@ -56,9 +58,12 @@ void RpcSettingsPopup::loadData() {
                         if (s.contains("show_watching")) m_showWatching = s["show_watching"].asBool().unwrapOr(true);
                         if (s.contains("show_competing")) m_showCompeting = s["show_competing"].asBool().unwrapOr(true);
                     }
+                    this->setupUI();
+                    return;
                 }
             }
-            this->setupUI();
+            FLAlertLayer::create("Error", "Failed to load your settings!", "OK")->show();
+            this->onClose(nullptr);
         }
     );
 }
@@ -133,11 +138,6 @@ void RpcSettingsPopup::onUnlink(CCObject* sender) {
             if (btn2) {
                 m_isUnlinking = true;
                 m_pollAttempts = 0; 
-
-                if (m_discordIdLabel) {
-                    m_discordIdLabel->setString("Unlinking... Please wait.");
-                }
-
                 m_unlinkNotif = Notification::create("Unlinking...", NotificationIcon::Loading, 0.0f);
                 m_unlinkNotif->show();
                 std::string url = fmt::format("{}/user_data/{}/unlink_requested.json?x-http-method-override=PUT", getFirebaseUrl(), m_uid);
@@ -151,7 +151,6 @@ void RpcSettingsPopup::onUnlink(CCObject* sender) {
                             m_unlinkNotif = nullptr;
                             m_isUnlinking = false;
                             FLAlertLayer::create("Error", "Failed to send unlink request to server.", "OK")->show();
-                            if (m_discordIdLabel) m_discordIdLabel->setString(fmt::format("GD Account ID: {}\nDiscord ID: {}", m_accountID, m_discordID).c_str());
                         }
                     }
                 );

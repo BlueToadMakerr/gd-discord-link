@@ -1,49 +1,36 @@
 #include "RpcDisplay.hpp"
 #include "RpcSettings.hpp"
-#include <Geode/utils/web.hpp>
-#include <Geode/utils/async.hpp>
 #include <Geode/ui/GeodeUI.hpp>
 #include <Geode/ui/LazySprite.hpp>
 #include <chrono>
-#include <vector>
 
 using namespace geode::prelude;
 
 namespace rpc_display {
-    class PriorityMenu : public CCMenu {
-    public:
-        static PriorityMenu* create() {
-            auto ret = new PriorityMenu();
-            if (ret && ret->init()) {
-                ret->autorelease();
-                return ret;
-            }
-            CC_SAFE_DELETE(ret);
-            return nullptr;
+    PriorityMenu* PriorityMenu::create() {
+        auto ret = new PriorityMenu();
+        if (ret && ret->init()) {
+            ret->autorelease();
+            return ret;
         }
+        CC_SAFE_DELETE(ret);
+        return nullptr;
+    }
 
-        void registerWithTouchDispatcher() override {
-            CCDirector::get()->getTouchDispatcher()->addTargetedDelegate(this, -130, true); 
+    void PriorityMenu::registerWithTouchDispatcher() {
+        CCDirector::get()->getTouchDispatcher()->addTargetedDelegate(this, -130, true); 
+    }
+    ccColor3B RpcPopup::hexToColor(const std::string& hex) {
+        if (hex.length() < 6) return {255, 255, 255};
+        std::string parse = hex[0] == '#' ? hex.substr(1) : hex;
+        int r, g, b;
+        if (sscanf(parse.c_str(), "%02x%02x%02x", &r, &g, &b) == 3) {
+            return {(GLubyte)r, (GLubyte)g, (GLubyte)b};
         }
-    };
+        return {255, 255, 255};
+    }
 
-    class RpcPopup : public geode::Popup {
-    protected:
-        std::vector<matjson::Value> m_rpcArray;
-        int m_currentIndex = 0;
-        int m_accountID = 0;
-        std::string m_lastRpcData = "";
-        geode::async::TaskHolder<web::WebResponse> m_pollTask;
-        matjson::Value m_data;
-        CCSize m_size;
-        CCNode* m_contentNode = nullptr;
-        long long m_start = 0;
-        long long m_end = 0;
-        CCLabelBMFont* m_timeLabel = nullptr;
-        CCScale9Sprite* m_progressBarBg = nullptr;
-        CCScale9Sprite* m_progressBarFg = nullptr;
-
-    bool init(int accountID, std::vector<matjson::Value> rpcArray, std::string initialData, int currentIndex, bool isMyProfile) {
+    bool RpcPopup::init(int accountID, std::vector<matjson::Value> rpcArray, std::string initialData, int currentIndex, bool isMyProfile) {
         if (!Popup::init(320.f, 150.f)) return false;
         
         m_accountID = accountID;
@@ -54,40 +41,39 @@ namespace rpc_display {
 
         if (isMyProfile) {
             auto settingsMenu = CCMenu::create();
-            settingsMenu->setPosition({m_size.width - 25.f, m_size.height - 25.f});
+            settingsMenu->setPosition({m_size.width - 3.0f, m_size.height - 3.0f});
             m_mainLayer->addChild(settingsMenu, 10);
-
             auto settingsSpr = CCSprite::createWithSpriteFrameName("GJ_optionsBtn_001.png");
-            settingsSpr->setScale(0.6f);
+            settingsSpr->setScale(0.75f);
             auto settingsBtn = CCMenuItemSpriteExtra::create(settingsSpr, this, menu_selector(RpcPopup::onSettingsClicked));
             settingsMenu->addChild(settingsBtn);
         }
 
-        if (m_rpcArray.size() > 1) {
-            auto arrowMenu = CCMenu::create();
-            arrowMenu->setPosition({0, 0});
-            m_mainLayer->addChild(arrowMenu);
+        m_arrowMenu = CCMenu::create();
+        m_arrowMenu->setPosition({0, 0});
+        m_mainLayer->addChild(m_arrowMenu);
 
-            auto leftSpr = CCSprite::createWithSpriteFrameName("GJ_arrow_03_001.png");
-            auto leftBtn = CCMenuItemSpriteExtra::create(leftSpr, this, menu_selector(RpcPopup::onPrev));
-            leftBtn->setPosition({-20.f, m_size.height / 2});
-            leftBtn->setScale(0.8f);
-            arrowMenu->addChild(leftBtn);
+        auto leftSpr = CCSprite::createWithSpriteFrameName("GJ_arrow_03_001.png");
+        auto leftBtn = CCMenuItemSpriteExtra::create(leftSpr, this, menu_selector(RpcPopup::onPrev));
+        leftBtn->setPosition({-20.f, m_size.height / 2});
+        leftBtn->setScale(0.8f);
+        m_arrowMenu->addChild(leftBtn);
 
-            auto rightSpr = CCSprite::createWithSpriteFrameName("GJ_arrow_03_001.png");
-            rightSpr->setFlipX(true);
-            auto rightBtn = CCMenuItemSpriteExtra::create(rightSpr, this, menu_selector(RpcPopup::onNext));
-            rightBtn->setPosition({m_size.width + 20.f, m_size.height / 2});
-            rightBtn->setScale(0.8f);
-            arrowMenu->addChild(rightBtn);
-        }
+        auto rightSpr = CCSprite::createWithSpriteFrameName("GJ_arrow_03_001.png");
+        rightSpr->setFlipX(true);
+        auto rightBtn = CCMenuItemSpriteExtra::create(rightSpr, this, menu_selector(RpcPopup::onNext));
+        rightBtn->setPosition({m_size.width + 20.f, m_size.height / 2});
+        rightBtn->setScale(0.8f);
+        m_arrowMenu->addChild(rightBtn);
+
+        m_arrowMenu->setVisible(m_rpcArray.size() > 1);
 
         loadRpc(m_currentIndex);
         this->schedule(schedule_selector(RpcPopup::pollData), 5.0f);
         return true;
     }
 
-    void loadRpc(int index) {
+    void RpcPopup::loadRpc(int index) {
         if (m_contentNode) {
             m_contentNode->removeFromParent();
         }
@@ -108,6 +94,11 @@ namespace rpc_display {
         int type = m_data.contains("type") && m_data["type"].isNumber() ? m_data["type"].asInt().unwrapOr(0) : 0;
         std::string details = m_data.contains("details") && m_data["details"].isString() ? m_data["details"].asString().unwrapOr("") : "";
         std::string state = m_data.contains("state") && m_data["state"].isString() ? m_data["state"].asString().unwrapOr("") : "";
+        std::string hexColor = m_data.contains("color") && m_data["color"].isString() ? m_data["color"].asString().unwrapOr("") : "";
+        
+        if (m_bgSprite) {
+            m_bgSprite->setColor(hexToColor(hexColor));
+        }
         
         matjson::Value assets;
         if (m_data.contains("assets") && m_data["assets"].isObject()) {
@@ -156,7 +147,7 @@ namespace rpc_display {
 
         float textStartX = 110.f;
         float textStartY = m_size.height - 35.f;
-        float maxTextWidth = m_size.width - textStartX - 30.f;
+        float maxTextWidth = m_size.width - textStartX - 55.f;
 
         auto textContainer = CCNode::create();
         textContainer->setContentSize({maxTextWidth, 75.f});
@@ -164,6 +155,7 @@ namespace rpc_display {
         textContainer->setPosition({textStartX, textStartY});
 
         textContainer->setLayout(
+            // OwO It's containers :3 using containers for those long song names for proprer text wrapping like the good boy I am >w<
             ColumnLayout::create()
                 ->setAxisReverse(true)
                 ->setAxisAlignment(AxisAlignment::End)
@@ -251,7 +243,7 @@ namespace rpc_display {
         }
     }
 
-    void setupTimestamps() {
+    void RpcPopup::setupTimestamps() {
         float timeY = 25.f;
         float barScale = 0.3f;
         float barWidth = 260.f;
@@ -273,9 +265,9 @@ namespace rpc_display {
             m_progressBarFg->setScale(barScale);
             m_progressBarFg->setPosition({m_size.width / 2.f - (barWidth / 2.f), timeY});
             m_contentNode->addChild(m_progressBarFg);
-            m_timeLabel = CCLabelBMFont::create("00:00 / 00:00", "chatFont.fnt");
+            m_timeLabel = CCLabelBMFont::create("OwO it's the progress bar", "chatFont.fnt");
         } else {
-            m_timeLabel = CCLabelBMFont::create("00:00 elapsed", "chatFont.fnt");
+            m_timeLabel = CCLabelBMFont::create("Haii :3", "chatFont.fnt");
         }
 
         m_timeLabel->setScale(0.75f);
@@ -283,7 +275,7 @@ namespace rpc_display {
         m_contentNode->addChild(m_timeLabel);
     }
 
-    void update(float dt) override {
+    void RpcPopup::update(float dt) {
         long long now = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::system_clock::now().time_since_epoch()
         ).count();
@@ -293,9 +285,7 @@ namespace rpc_display {
             long long current = now - m_start;
             if (current < 0) current = 0;
             if (current > total) current = total;
-
             float percent = (total > 0) ? (float)current / (float)total : 0.0f;
-            
             float barScale = 0.3f;
             float barWidth = 260.f;
             float targetWidth = (barWidth * percent) / barScale;
@@ -308,7 +298,6 @@ namespace rpc_display {
             }
 
             m_timeLabel->setString(fmt::format("{} / {}", formatTime(current), formatTime(total)).c_str());
-
         } else if (m_start > 0) {
             long long elapsed = now - m_start;
             if (elapsed < 0) elapsed = 0;
@@ -321,7 +310,7 @@ namespace rpc_display {
         }
     }
 
-    std::string formatTime(long long seconds) {
+    std::string RpcPopup::formatTime(long long seconds) {
         long long h = seconds / 3600;
         long long m = (seconds % 3600) / 60;
         long long s = seconds % 60;
@@ -331,13 +320,12 @@ namespace rpc_display {
         return fmt::format("{:02}:{:02}", m, s);
     }
 
-    void pollData(float dt) {
+    void RpcPopup::pollData(float dt) {
         std::string baseUrl = Mod::get()->getSettingValue<std::string>("firebase-url");
         if (baseUrl.empty()) baseUrl = "https://discordgdlinker-default-rtdb.firebaseio.com";
         if (baseUrl.back() == '/') baseUrl.pop_back();
-
         std::string targetUrl = fmt::format("{}/users/{}.json", baseUrl, m_accountID);
-
+        
         m_pollTask.spawn(
             web::WebRequest().get(targetUrl),
             [this](web::WebResponse response) {
@@ -353,6 +341,9 @@ namespace rpc_display {
                                 m_rpcArray = rpcNode.asArray().unwrap();
                                 if (m_currentIndex >= m_rpcArray.size()) {
                                     m_currentIndex = 0;
+                                }
+                                if (m_arrowMenu) {
+                                    m_arrowMenu->setVisible(m_rpcArray.size() > 1);
                                 }
                                 if (!m_rpcArray.empty()) {
                                     this->loadRpc(m_currentIndex);
@@ -371,17 +362,17 @@ namespace rpc_display {
         );
     }
 
-    void onNext(CCObject*) {
+    void RpcPopup::onNext(CCObject*) {
         m_currentIndex = (m_currentIndex + 1) % m_rpcArray.size();
         loadRpc(m_currentIndex);
     }
 
-    void onPrev(CCObject*) {
+    void RpcPopup::onPrev(CCObject*) {
         m_currentIndex = (m_currentIndex - 1 + m_rpcArray.size()) % m_rpcArray.size();
         loadRpc(m_currentIndex);
     }
 
-    void onLargeImageClick(CCObject*) {
+    void RpcPopup::onLargeImageClick(CCObject*) {
         std::string text = "No details provided.";
         if (m_data.contains("assets") && m_data["assets"].contains("large_text")) {
             text = m_data["assets"]["large_text"].asString().unwrapOr(text);
@@ -389,7 +380,7 @@ namespace rpc_display {
         FLAlertLayer::create("Large Image", text, "OK")->show();
     }
 
-    void onSmallImageClick(CCObject*) {
+    void RpcPopup::onSmallImageClick(CCObject*) {
         std::string text = "No details provided.";
         if (m_data.contains("assets") && m_data["assets"].contains("small_text")) {
             text = m_data["assets"]["small_text"].asString().unwrapOr(text);
@@ -397,34 +388,32 @@ namespace rpc_display {
         FLAlertLayer::create("Small Image", text, "OK")->show();
     }
 
-    void onSettingsClicked(CCObject* sender) {
+    void RpcPopup::onSettingsClicked(CCObject* sender) {
         RpcSettingsPopup::create(m_accountID)->show();
     }
 
-    public:
-        static RpcPopup* create(int accountID, std::vector<matjson::Value> rpcArray, std::string initialData, int currentIndex = 0, bool isMyProfile = false) {
-            auto ret = new RpcPopup();
-            if (ret && ret->init(accountID, rpcArray, initialData, currentIndex, isMyProfile)) {
-                ret->autorelease();
-                return ret;
-            }
-            CC_SAFE_DELETE(ret);
-            return nullptr;
+    RpcPopup* RpcPopup::create(int accountID, std::vector<matjson::Value> rpcArray, std::string initialData, int currentIndex, bool isMyProfile) {
+        auto ret = new RpcPopup();
+        if (ret && ret->init(accountID, rpcArray, initialData, currentIndex, isMyProfile)) {
+            ret->autorelease();
+            return ret;
         }
-    };
+        CC_SAFE_DELETE(ret);
+        return nullptr;
+    }
 
     void showRpcDetailsPopup(int accountID, bool isLinked, bool hasRpc, bool isMyProfile) {
+        if(g_isLoadingRpc) return;
+        g_isLoadingRpc = true;
         if (!hasRpc) {
             FLAlertLayer::create("Discord Status", "This user is offline..", "OK")->show();
+            g_isLoadingRpc = false;
             return;
         }
-
         std::string baseUrl = Mod::get()->getSettingValue<std::string>("firebase-url");
         if (baseUrl.empty()) baseUrl = "https://discordgdlinker-default-rtdb.firebaseio.com";
         if (baseUrl.back() == '/') baseUrl.pop_back();
-
         std::string targetUrl = fmt::format("{}/users/{}.json", baseUrl, accountID);
-
         geode::async::spawn(
             web::WebRequest().get(targetUrl),
             [accountID, isMyProfile](web::WebResponse response) {
@@ -436,13 +425,15 @@ namespace rpc_display {
                             auto rpcNode = data["rpc"];
                             auto rpcArray = rpcNode.asArray().unwrap();
                             if (!rpcArray.empty()) {
-                                RpcPopup::create(accountID, rpcArray, rpcNode.dump(), 0, isMyProfile)->show(); 
+                                RpcPopup::create(accountID, rpcArray, rpcNode.dump(), 0, isMyProfile)->show();
+                                g_isLoadingRpc = false;
                                 return;
                             }
                         }
                     }
                 }
-                FLAlertLayer::create("Error", "This user is offline..", "OK")->show();
+                FLAlertLayer::create("Error", "Failed to get RPC data... this user might be offline..", "OK")->show();
+                g_isLoadingRpc = false;
             }
         );
     }
