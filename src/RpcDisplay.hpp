@@ -48,6 +48,6 @@ namespace rpc_display {
         static RpcPopup* create(int accountID, std::vector<matjson::Value> rpcArray, std::string initialData, int currentIndex = 0, bool isMyProfile = false);
     };
 
-    inline bool g_isLoadingRpc = false;
+    inline bool isLoadingRpc = false;
     void showRpcDetailsPopup(int accountID, bool isLinked, bool hasRpc, bool isMyProfile);
 }

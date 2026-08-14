@@ -403,11 +403,11 @@ namespace rpc_display {
     }
 
     void showRpcDetailsPopup(int accountID, bool isLinked, bool hasRpc, bool isMyProfile) {
-        if(g_isLoadingRpc) return;
-        g_isLoadingRpc = true;
+        if(isLoadingRpc) return;
+        isLoadingRpc = true;
         if (!hasRpc) {
             FLAlertLayer::create("Discord Status", "This user is offline..", "OK")->show();
-            g_isLoadingRpc = false;
+            isLoadingRpc = false;
             return;
         }
         std::string baseUrl = Mod::get()->getSettingValue<std::string>("firebase-url");
@@ -426,14 +426,14 @@ namespace rpc_display {
                             auto rpcArray = rpcNode.asArray().unwrap();
                             if (!rpcArray.empty()) {
                                 RpcPopup::create(accountID, rpcArray, rpcNode.dump(), 0, isMyProfile)->show();
-                                g_isLoadingRpc = false;
+                                isLoadingRpc = false;
                                 return;
                             }
                         }
                     }
                 }
                 FLAlertLayer::create("Error", "Failed to get RPC data... this user might be offline..", "OK")->show();
-                g_isLoadingRpc = false;
+                isLoadingRpc = false;
             }
         );
     }

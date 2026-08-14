@@ -8,7 +8,7 @@
 	},
 	"id": "bluetoadmaker.discord-rpc-linker",
 	"name": "Discord RPC Linker",
-	"version": "v1.0.0",
+	"version": "v1.0.0-prerelease",
 	"developer": "BlueToadMaker",
 	"description": "Shows your Discord Status on Geometry Dash!",
 	"resources": {
@@ -32,6 +32,13 @@
         }
     },
 	"tags": ["online"],
+	"links": {
+		"homepage": "https://bluetoadmaker.infinityfreeapp.com/discordgdlinker/",
+		"source": "https://owo.com/"
+	},
+	"issues": {
+		"info": "I wonder why this is still here.. Compatibility? Its still mentioned in the docs tho... I mean, we're at v5 anyways, meaning nobody is gonna see this anyways lol :3 Mrrrp~ Maow! >w< Well.. I guess whoever is reviewing this mod (and anyone just.. looking through the source) will see this so uhh... Haiii Yall ^w^"
+	},
 	"dependencies": {
 		"geode.node-ids": ">=v1.23.3"
 	}
