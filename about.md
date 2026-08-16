@@ -14,3 +14,5 @@ How we handle your data can be seen at our [Privacy Policy](https://bluetoadmake
 This mod works great in pair with the following mod
 
 <mod:techstudent10.discord_rich_presence>
+
+> *Note: The mod is Windows/MacOS only. If you are on android, I recommend [Kizzy](https://kizzy.dead8309.xyz)! Its not as rich, but still displays when you are on Geometry Dash or not*

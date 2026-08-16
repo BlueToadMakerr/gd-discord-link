@@ -180,7 +180,7 @@ void DirectoryPopup::populateList(const matjson::Value& data) {
         if (s_userCache.contains(accountID)) {
             applyUserData(s_userCache[accountID]);
         } else {
-            // Get the Player ID
+            // Get the Player ID 
             std::string userInfoPost = fmt::format("gameVersion=22&binaryVersion=47&targetAccountID={}&secret=Wmfd2893gb7", accountID);
             geode::async::spawn(
                 web::WebRequest().bodyString(userInfoPost).post("https://www.boomlings.com/database/getGJUserInfo20.php"),

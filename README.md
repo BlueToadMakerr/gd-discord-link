@@ -1,6 +1,8 @@
 #  Discord RPC Linker
 <img src="logo.png" width="150" alt="ITS THE LITERAL FUCKING LOGOOOOOOO JIOEGOIUGYIUODHOEIUHDPIOEHD"/>
 
+> If you can make a logo, I'd gladly appreaciate it ^w^ I can't make one, and even if I could.. my chromebook can not run photopea from how bloated it is from ads..
+
 Show off your Rich Presence status from Discord on your Geometry Dash profile!
 ### Status colors
 - Green: User is online and has a presence enabled
@@ -13,6 +15,8 @@ How we handle your data can be seen at our [Privacy Policy](https://bluetoadmake
 ---
 
 This mod works great in pair with the following mod: [Discord Rich Presence](https://geode-sdk.org/mods/techstudent10.discord_rich_presence).
+
+> Note: The mod is Windows/MacOS only. If you are on android, I recommend [Kizzy](https://kizzy.dead8309.xyz)! Its not as rich, but still displays when you are on Geometry Dash or not
 
 ## Self hosting
 Self hostng files can be found in the backend folder in this repository :3<br>
@@ -58,6 +62,10 @@ First, set up a Firebase Realtime Database. I won't bore you with the creating s
       },
     },
     "oauth_url": {
+      ".read": true,
+      ".write": false
+    },
+    "directory": {
       ".read": true,
       ".write": false
     }
