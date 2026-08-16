@@ -8,7 +8,7 @@
 	},
 	"id": "bluetoadmaker.discord-rpc-linker",
 	"name": "Discord RPC Linker",
-	"version": "v1.0.0-prerelease",
+	"version": "v1.0.0",
 	"developer": "BlueToadMaker",
 	"description": "Shows your Discord Status on Geometry Dash!",
 	"resources": {
