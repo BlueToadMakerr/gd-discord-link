@@ -188,7 +188,7 @@ void RpcSettingsPopup::setupPage2(CCMenu* menu) {
         }
     };
 
-    createToggle("Directory Listing", "Directory Listing", "Allow your profile and activity to appear in the public directory list.", m_dirListing, menu_selector(RpcSettingsPopup::onToggleDirListing), {-140.f, 25.f});
+    createToggle("Directory Listing", "Directory Listing", "Allow your profile and activity to appear in the public directory (Online Players) list.", m_dirListing, menu_selector(RpcSettingsPopup::onToggleDirListing), {-140.f, 25.f});
 }
 
 void RpcSettingsPopup::setupPage3(CCMenu* menu) {

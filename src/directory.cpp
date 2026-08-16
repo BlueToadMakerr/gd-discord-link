@@ -21,7 +21,7 @@ DirectoryPopup* DirectoryPopup::create() {
 
 bool DirectoryPopup::init() {
     if (!Popup::init(360.f, 240.f)) return false;
-    this->setTitle("Directory");
+    this->setTitle("Online Players");
     m_scrollLayer = ScrollLayer::create({320.f, 180.f});
     m_scrollLayer->setPosition(m_mainLayer->getContentSize() / 2 - m_scrollLayer->getContentSize() / 2);
     m_mainLayer->addChild(m_scrollLayer);
