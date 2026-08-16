@@ -123,7 +123,7 @@ void RpcSettingsPopup::loadPage(int page) {
 void RpcSettingsPopup::setupPage1(CCMenu* menu) {
     auto title = CCLabelBMFont::create("RPC Settings", "bigFont.fnt");
     title->setPosition({0.f, 65.f});
-    title->setScale(0.3f);
+    title->setScale(0.5f);
     menu->addChild(title);
 
     auto createToggle = [&](const char* name, const char* infoTitle, const char* infoDesc, bool state, SEL_MenuHandler callback, CCPoint pos) {
@@ -161,7 +161,7 @@ void RpcSettingsPopup::setupPage1(CCMenu* menu) {
 void RpcSettingsPopup::setupPage2(CCMenu* menu) {
     auto title = CCLabelBMFont::create("Privacy Settings", "bigFont.fnt");
     title->setPosition({0.f, 65.f});
-    title->setScale(0.3f);
+    title->setScale(0.5f);
     menu->addChild(title);
 
     auto createToggle = [&](const char* name, const char* infoTitle, const char* infoDesc, bool state, SEL_MenuHandler callback, CCPoint pos) {
@@ -194,7 +194,7 @@ void RpcSettingsPopup::setupPage2(CCMenu* menu) {
 void RpcSettingsPopup::setupPage3(CCMenu* menu) {
     auto title = CCLabelBMFont::create("Account Management", "bigFont.fnt");
     title->setPosition({0.f, 65.f});
-    title->setScale(0.3f);
+    title->setScale(0.5f);
     menu->addChild(title);
 
     auto unlinkSpr = ButtonSprite::create("Unlink Discord Account", "goldFont.fnt", "GJ_button_06.png", 0.7f);
