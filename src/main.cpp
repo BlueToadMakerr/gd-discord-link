@@ -65,9 +65,8 @@ $on_mod(Loaded) {
 class $modify(RPCMenuLayer, MenuLayer) {
     bool init() {
         if (!MenuLayer::init()) return false;
-
         if (auto rightMenu = this->getChildByID("right-side-menu")) {
-            auto dirBtnSpr = CCSprite::createWithSpriteFrameName("GJ_chatBtn_001.png");
+            auto dirBtnSpr = CCSprite::createWithSpriteFrameName("accountBtn_friends_001.png");
             auto dirBtn = CCMenuItemSpriteExtra::create(
                 dirBtnSpr,
                 this,
@@ -78,7 +77,6 @@ class $modify(RPCMenuLayer, MenuLayer) {
             rightMenu->addChild(dirBtn);
             rightMenu->updateLayout();
         }
-
         return true;
     }
 
