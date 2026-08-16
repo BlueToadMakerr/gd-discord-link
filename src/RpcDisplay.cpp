@@ -389,7 +389,7 @@ namespace rpc_display {
     }
 
     void RpcPopup::onSettingsClicked(CCObject* sender) {
-        RpcSettingsPopup::create(m_accountID)->show();
+        RpcSettingsPopup::openSettingsPopup(m_accountID);
     }
 
     RpcPopup* RpcPopup::create(int accountID, std::vector<matjson::Value> rpcArray, std::string initialData, int currentIndex, bool isMyProfile) {

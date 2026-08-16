@@ -2,12 +2,29 @@
 #include <Geode/utils/async.hpp>
 #include <Geode/ui/Notification.hpp>
 #include "RpcSettings.hpp"
+#include "authPopup.hpp"
 
 std::string RpcSettingsPopup::getFirebaseUrl() {
     std::string baseUrl = Mod::get()->getSettingValue<std::string>("firebase-url");
     if (baseUrl.empty()) baseUrl = "https://discordgdlinker-default-rtdb.firebaseio.com";
     if (baseUrl.back() == '/') baseUrl.pop_back();
     return baseUrl;
+}
+
+void RpcSettingsPopup::openSettingsPopup(int accountID) {
+    std::string uid = Mod::get()->getSavedValue<std::string>("uid");
+    auto promptReauth = [accountID]() {
+        AuthPopup::showReauthPopup(accountID, [accountID]() {
+            RpcSettingsPopup::openSettingsPopup(accountID);
+        });
+    };
+    if (uid.empty()) {
+        promptReauth();
+        return;
+    }
+    if (auto popup = RpcSettingsPopup::create(accountID)) {
+        popup->show();
+    }
 }
 
 bool RpcSettingsPopup::init(int accountID) {
@@ -18,16 +35,6 @@ bool RpcSettingsPopup::init(int accountID) {
     
     this->setTitle("RPC Settings");
     
-    if (m_uid.empty()) {
-        FLAlertLayer::create(
-        "Error", "No verified account was found on this device!\n\n"
-        "If you have an account, you may need to reauth.\n"
-        "If you don't have an account.. then why are you here...",
-        "OK")->show();
-        this->onClose(nullptr);
-        return true;
-    }
-
     m_discordIdLabel = CCLabelBMFont::create("Fetching info...", "chatFont.fnt");
     m_discordIdLabel->setPosition({m_size.width / 2.f, m_size.height - 45.f});
     m_discordIdLabel->setScale(0.6f);
@@ -57,6 +64,7 @@ void RpcSettingsPopup::loadData() {
                         if (s.contains("show_listening")) m_showListening = s["show_listening"].asBool().unwrapOr(true);
                         if (s.contains("show_watching")) m_showWatching = s["show_watching"].asBool().unwrapOr(true);
                         if (s.contains("show_competing")) m_showCompeting = s["show_competing"].asBool().unwrapOr(true);
+                        if (s.contains("dir_listing")) m_dirListing = s["dir_listing"].asBool().unwrapOr(true);
                     }
                     this->setupUI();
                     return;
@@ -69,35 +77,155 @@ void RpcSettingsPopup::loadData() {
 }
 
 void RpcSettingsPopup::setupUI() {
-    m_discordIdLabel->setString(fmt::format("Geometry Dash ID: {}\nDiscord ID: {}", m_accountID, m_discordID).c_str());
+    m_discordIdLabel->setString(fmt::format("Geometry Dash ID: {} | Discord ID: {}", m_accountID, m_discordID).c_str());
+
+    if (!m_pageNode) {
+        m_pageNode = CCNode::create();
+        m_pageNode->setContentSize(m_size);
+        m_mainLayer->addChild(m_pageNode);
+    }
+
+    loadPage(m_currentPage);
+}
+
+void RpcSettingsPopup::loadPage(int page) {
+    m_currentPage = page;
+    m_pageNode->removeAllChildren();
 
     auto menu = CCMenu::create();
     menu->setPosition({m_size.width / 2.f, m_size.height / 2.f});
-    m_mainLayer->addChild(menu);
+    m_pageNode->addChild(menu);
 
-    auto createToggle = [&](const char* name, bool state, SEL_MenuHandler callback, CCPoint pos) {
+    if (m_currentPage == 1) {
+        setupPage1(menu);
+    } else if (m_currentPage == 2) {
+        setupPage2(menu);
+    } else if (m_currentPage == 3) {
+        setupPage3(menu);
+    }
+
+    auto leftSpr = CCSprite::createWithSpriteFrameName("GJ_arrow_03_001.png");
+    auto leftBtn = CCMenuItemSpriteExtra::create(leftSpr, this, menu_selector(RpcSettingsPopup::onSwitchPage));
+    leftBtn->setPosition({-190.f, 0.f}); 
+    leftBtn->setScale(0.8f);
+    leftBtn->setTag(-1);
+    menu->addChild(leftBtn);
+    
+    auto rightSpr = CCSprite::createWithSpriteFrameName("GJ_arrow_03_001.png");
+    rightSpr->setFlipX(true);
+    auto rightBtn = CCMenuItemSpriteExtra::create(rightSpr, this, menu_selector(RpcSettingsPopup::onSwitchPage));
+    rightBtn->setPosition({190.f, 0.f}); 
+    rightBtn->setScale(0.8f);
+    rightBtn->setTag(1);
+    menu->addChild(rightBtn);
+}
+
+void RpcSettingsPopup::setupPage1(CCMenu* menu) {
+    auto title = CCLabelBMFont::create("RPC Settings", "bigFont.fnt");
+    title->setPosition({0.f, 65.f});
+    title->setScale(0.3f);
+    menu->addChild(title);
+
+    auto createToggle = [&](const char* name, const char* infoTitle, const char* infoDesc, bool state, SEL_MenuHandler callback, CCPoint pos) {
         auto toggler = CCMenuItemToggler::createWithStandardSprites(this, callback, 0.7f);
         toggler->setPosition(pos);
         toggler->toggle(state);
         menu->addChild(toggler);
+        
         auto label = CCLabelBMFont::create(name, "bigFont.fnt");
         label->setAnchorPoint({0.f, 0.5f});
         label->setPosition({pos.x + 15.f, pos.y});
         label->setScale(0.5f);
         menu->addChild(label);
+
+        if (infoTitle && infoDesc) {
+            auto infoSpr = CCSprite::createWithSpriteFrameName("GJ_infoIcon_001.png");
+            infoSpr->setScale(0.5f);
+
+            auto infoBtn = CCMenuItemExt::createSpriteExtra(infoSpr, [infoTitle, infoDesc](auto) {
+                FLAlertLayer::create(infoTitle, infoDesc, "OK")->show();
+            });
+            infoBtn->setPosition({pos.x - 15.f, pos.y + 15.f});
+            menu->addChild(infoBtn);
+        }
     };
 
-    createToggle("Playing", m_showPlaying, menu_selector(RpcSettingsPopup::onTogglePlaying), {-140.f, 25.f});
-    createToggle("Streaming", m_showStreaming, menu_selector(RpcSettingsPopup::onToggleStreaming), {-140.f, -5.f});
-    createToggle("Listening", m_showListening, menu_selector(RpcSettingsPopup::onToggleListening), {-140.f, -35.f});
+    createToggle("Playing", nullptr, nullptr, m_showPlaying, menu_selector(RpcSettingsPopup::onTogglePlaying), {-140.f, 25.f});
+    createToggle("Streaming", nullptr, nullptr, m_showStreaming, menu_selector(RpcSettingsPopup::onToggleStreaming), {-140.f, -5.f});
+    createToggle("Listening", nullptr, nullptr, m_showListening, menu_selector(RpcSettingsPopup::onToggleListening), {-140.f, -35.f});
 
-    createToggle("Watching", m_showWatching, menu_selector(RpcSettingsPopup::onToggleWatching), {20.f, 25.f});
-    createToggle("Competing", m_showCompeting, menu_selector(RpcSettingsPopup::onToggleCompeting), {20.f, -5.f});
+    createToggle("Watching", nullptr, nullptr, m_showWatching, menu_selector(RpcSettingsPopup::onToggleWatching), {20.f, 25.f});
+    createToggle("Competing", nullptr, nullptr, m_showCompeting, menu_selector(RpcSettingsPopup::onToggleCompeting), {20.f, -5.f});
+}
 
-    auto unlinkSpr = ButtonSprite::create("Unlink", "goldFont.fnt", "GJ_button_06.png", 0.7f);
+void RpcSettingsPopup::setupPage2(CCMenu* menu) {
+    auto title = CCLabelBMFont::create("Privacy Settings", "bigFont.fnt");
+    title->setPosition({0.f, 65.f});
+    title->setScale(0.3f);
+    menu->addChild(title);
+
+    auto createToggle = [&](const char* name, const char* infoTitle, const char* infoDesc, bool state, SEL_MenuHandler callback, CCPoint pos) {
+        auto toggler = CCMenuItemToggler::createWithStandardSprites(this, callback, 0.7f);
+        toggler->setPosition(pos);
+        toggler->toggle(state);
+        menu->addChild(toggler);
+        
+        auto label = CCLabelBMFont::create(name, "bigFont.fnt");
+        label->setAnchorPoint({0.f, 0.5f});
+        label->setPosition({pos.x + 15.f, pos.y});
+        label->setScale(0.5f);
+        menu->addChild(label);
+
+        if (infoTitle && infoDesc) {
+            auto infoSpr = CCSprite::createWithSpriteFrameName("GJ_infoIcon_001.png");
+            infoSpr->setScale(0.5f);
+
+            auto infoBtn = CCMenuItemExt::createSpriteExtra(infoSpr, [infoTitle, infoDesc](auto) {
+                FLAlertLayer::create(infoTitle, infoDesc, "OK")->show();
+            });
+            infoBtn->setPosition({pos.x - 15.f, pos.y + 15.f});
+            menu->addChild(infoBtn);
+        }
+    };
+
+    createToggle("Directory Listing", "Directory Listing", "Allow your profile and activity to appear in the public directory list.", m_dirListing, menu_selector(RpcSettingsPopup::onToggleDirListing), {-140.f, 25.f});
+}
+
+void RpcSettingsPopup::setupPage3(CCMenu* menu) {
+    auto title = CCLabelBMFont::create("Account Management", "bigFont.fnt");
+    title->setPosition({0.f, 65.f});
+    title->setScale(0.3f);
+    menu->addChild(title);
+
+    auto unlinkSpr = ButtonSprite::create("Unlink Discord Account", "goldFont.fnt", "GJ_button_06.png", 0.7f);
     auto unlinkBtn = CCMenuItemSpriteExtra::create(unlinkSpr, this, menu_selector(RpcSettingsPopup::onUnlink));
-    unlinkBtn->setPosition({0.f, -85.f});
+    unlinkBtn->setPosition({0.f, 25.f});
     menu->addChild(unlinkBtn);
+
+    auto logoutSpr = ButtonSprite::create("Log Out from This Device", "goldFont.fnt", "GJ_button_01.png", 0.7f);
+    auto logoutBtn = CCMenuItemSpriteExtra::create(logoutSpr, this, menu_selector(RpcSettingsPopup::onLogOut));
+    logoutBtn->setPosition({0.f, -25.f});
+    menu->addChild(logoutBtn);
+
+    auto logoutAllSpr = ButtonSprite::create("Log Out from All Devices", "goldFont.fnt", "GJ_button_06.png", 0.7f);
+    auto logoutAllBtn = CCMenuItemSpriteExtra::create(logoutAllSpr, this, menu_selector(RpcSettingsPopup::onLogOutAll));
+    logoutAllBtn->setPosition({0.f, -75.f});
+    menu->addChild(logoutAllBtn);
+}
+
+void RpcSettingsPopup::onSwitchPage(CCObject* sender) {
+    int maxPages = 3;
+    auto btn = static_cast<CCNode*>(sender);
+    int direction = btn->getTag();
+    m_currentPage += direction;
+
+    if (m_currentPage > maxPages) {
+        m_currentPage = 1;
+    } else if (m_currentPage < 1) {
+        m_currentPage = maxPages;
+    }
+
+    loadPage(m_currentPage);
 }
 
 void RpcSettingsPopup::onTogglePlaying(CCObject*) { m_showPlaying = !m_showPlaying; updateSettings(); }
@@ -105,17 +233,19 @@ void RpcSettingsPopup::onToggleStreaming(CCObject*) { m_showStreaming = !m_showS
 void RpcSettingsPopup::onToggleListening(CCObject*) { m_showListening = !m_showListening; updateSettings(); }
 void RpcSettingsPopup::onToggleWatching(CCObject*) { m_showWatching = !m_showWatching; updateSettings(); }
 void RpcSettingsPopup::onToggleCompeting(CCObject*) { m_showCompeting = !m_showCompeting; updateSettings(); }
+void RpcSettingsPopup::onToggleDirListing(CCObject*) { m_dirListing = !m_dirListing; updateSettings(); }
 
 void RpcSettingsPopup::updateSettings() {
     std::string url = fmt::format("{}/user_data/{}/settings.json?x-http-method-override=PUT", getFirebaseUrl(), m_uid);
     
     std::string payload = fmt::format(
-        R"({{"show_playing": {}, "show_streaming": {}, "show_listening": {}, "show_watching": {}, "show_competing": {}}})", 
+        R"({{"show_playing": {}, "show_streaming": {}, "show_listening": {}, "show_watching": {}, "show_competing": {}, "dir_listing": {}}})", 
         m_showPlaying ? "true" : "false", 
         m_showStreaming ? "true" : "false",
         m_showListening ? "true" : "false",
         m_showWatching ? "true" : "false",
-        m_showCompeting ? "true" : "false"
+        m_showCompeting ? "true" : "false",
+        m_dirListing ? "true" : "false"
     );
 
     geode::async::spawn(
@@ -123,6 +253,46 @@ void RpcSettingsPopup::updateSettings() {
         [](web::WebResponse response) {
             if (!response.ok()) {
                 log::error("Failed to update settings in Firebase!");
+            }
+        }
+    );
+}
+
+void RpcSettingsPopup::onLogOut(CCObject* sender) {
+    if (m_isUnlinking) return;
+    Mod::get()->setSavedValue<std::string>("uid", "");
+    FLAlertLayer::create("Logged Out", "You have been logged out.", "OK")->show();
+    this->onClose(nullptr);
+}
+
+void RpcSettingsPopup::onLogOutAll(CCObject* sender) {
+    if (m_isUnlinking) return; 
+    geode::createQuickPopup(
+        "Confirm Global Log Out",
+        "Are you sure you want to log out from <cr>all devices</c>? This will reset your token used for authenticating you, requiring a reauth.",
+        "Cancel", "Log Out",
+        [this](FLAlertLayer* alert, bool btn2) {
+            if (btn2) {
+                m_isUnlinking = true;
+                m_pollAttempts = 0; 
+                m_activeRequestNode = "logout_all_requested";
+                m_unlinkNotif = Notification::create("Logging out from all devices...", NotificationIcon::Loading, 0.0f);
+                m_unlinkNotif->show();
+                
+                std::string url = fmt::format("{}/user_data/{}/{}.json?x-http-method-override=PUT", getFirebaseUrl(), m_uid, m_activeRequestNode);
+                geode::async::spawn(
+                    web::WebRequest().bodyString("true").post(url),
+                    [this](web::WebResponse response) { 
+                        if (response.ok()) {
+                            this->pollUnlinkStatus();
+                        } else {
+                            m_unlinkNotif->cancel();
+                            m_unlinkNotif = nullptr;
+                            m_isUnlinking = false;
+                            FLAlertLayer::create("Error", "Failed to send global log out request to server.", "OK")->show();
+                        }
+                    }
+                );
             }
         }
     );
@@ -138,9 +308,10 @@ void RpcSettingsPopup::onUnlink(CCObject* sender) {
             if (btn2) {
                 m_isUnlinking = true;
                 m_pollAttempts = 0; 
+                m_activeRequestNode = "unlink_requested";
                 m_unlinkNotif = Notification::create("Unlinking...", NotificationIcon::Loading, 0.0f);
                 m_unlinkNotif->show();
-                std::string url = fmt::format("{}/user_data/{}/unlink_requested.json?x-http-method-override=PUT", getFirebaseUrl(), m_uid);
+                std::string url = fmt::format("{}/user_data/{}/{}.json?x-http-method-override=PUT", getFirebaseUrl(), m_uid, m_activeRequestNode);
                 geode::async::spawn(
                     web::WebRequest().bodyString("true").post(url),
                     [this](web::WebResponse response) { 
@@ -170,7 +341,8 @@ void RpcSettingsPopup::pollUnlinkStatus() {
             "The server took too long to respond! Try again?", 
             "OK"
         )->show();
-        std::string cleanupUrl = fmt::format("{}/user_data/{}/unlink_requested.json?x-http-method-override=DELETE", getFirebaseUrl(), m_uid);
+        
+        std::string cleanupUrl = fmt::format("{}/user_data/{}/{}.json?x-http-method-override=DELETE", getFirebaseUrl(), m_uid, m_activeRequestNode);
         geode::async::spawn(web::WebRequest().post(cleanupUrl), [](web::WebResponse) {});
         return;
     }
@@ -211,7 +383,12 @@ void RpcSettingsPopup::onUnlinkRequestFinished() {
     m_unlinkNotif->cancel();
     m_unlinkNotif = nullptr;
     Mod::get()->setSavedValue<std::string>("uid", "");
-    FLAlertLayer::create("Unlinked", "Your account has been unlinked successfully!", "OK")->show();
+    
+    std::string successMsg = (m_activeRequestNode == "unlink_requested") ? 
+        "Your account has been unlinked successfully!" : 
+        "You have been successfully logged out of all devices!";
+        
+    FLAlertLayer::create("Success", successMsg.c_str(), "OK")->show();
     this->onClose(nullptr);
 }
 

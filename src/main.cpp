@@ -1,5 +1,6 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/ProfilePage.hpp>
+#include <Geode/modify/MenuLayer.hpp>
 #include <Geode/utils/web.hpp>
 #include <Geode/utils/async.hpp>
 #include <Geode/loader/SettingV3.hpp>
@@ -9,6 +10,7 @@
 #include "authPopup.hpp"
 #include "RpcDisplay.hpp"
 #include "RpcSettings.hpp"
+#include "directory.hpp"
 
 using namespace geode::prelude;
 
@@ -55,10 +57,37 @@ $on_mod(Loaded) {
                 )->show();
                 return;
             }
-            RpcSettingsPopup::create(localAccountID)->show();
+            RpcSettingsPopup::openSettingsPopup(localAccountID);
         }
     }).leak();
 }
+
+class $modify(RPCMenuLayer, MenuLayer) {
+    bool init() {
+        if (!MenuLayer::init()) return false;
+
+        if (auto rightMenu = this->getChildByID("right-side-menu")) {
+            auto dirBtnSpr = CCSprite::createWithSpriteFrameName("GJ_chatBtn_001.png");
+            auto dirBtn = CCMenuItemSpriteExtra::create(
+                dirBtnSpr,
+                this,
+                menu_selector(RPCMenuLayer::onDirectoryButtonClicked)
+            );
+            
+            dirBtn->setID("discord-directory-button"_spr);
+            rightMenu->addChild(dirBtn);
+            rightMenu->updateLayout();
+        }
+
+        return true;
+    }
+
+    void onDirectoryButtonClicked(CCObject* sender) {
+        if (auto popup = DirectoryPopup::create()) {
+            popup->show();
+        }
+    }
+};
 
 class $modify(RPCProfilePage, ProfilePage) {
     struct Fields {
@@ -201,17 +230,17 @@ class $modify(RPCProfilePage, ProfilePage) {
 
         if (m_fields->m_isLinked && !localUid.empty()) {
             rpc_display::showRpcDetailsPopup(m_fields->m_accountID, m_fields->m_isLinked, m_fields->m_hasRpc, isMyProfile);
-        } else if (m_fields->m_accountID == myAccountID) {
+        } else if (isMyProfile) {
             auto onSuccess = [this]() {
                 this->m_fields->m_isLinked = true;
                 this->updateStatusIndicator(true);
             };
 
-            if (m_fields->m_isLinked) {
-                AuthPopup::showReauthPopup(myAccountID, onSuccess);
-            } else {
+            if (!m_fields->m_isLinked) {
                 AuthPopup::showSetupDisclaimer(myAccountID, onSuccess);
+                return;
             }
+            rpc_display::showRpcDetailsPopup(m_fields->m_accountID, m_fields->m_isLinked, m_fields->m_hasRpc, isMyProfile);
         } else {
             rpc_display::showRpcDetailsPopup(m_fields->m_accountID, m_fields->m_isLinked, m_fields->m_hasRpc, isMyProfile);
         }

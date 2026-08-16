@@ -11,7 +11,7 @@ from firebase_admin import credentials, db
 from dotenv import load_dotenv
 load_dotenv()
 
-# --- CONFIG ---
+# Configuration
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 REDIRECT_URI = os.getenv("REDIRECT_URI")
@@ -157,7 +157,7 @@ async def process_queue():
                             if "30001" in guild_err:
                                 error_reason = "discord_server_limit_reached"
                             if "50026" in guild_err:
-                                error_reason = "guild_join_no_permission"
+                                error_reason = "guild_join_no_permissions"
                             
                             await write_error_and_cleanup(account_id, error_reason)
                             continue
@@ -213,6 +213,7 @@ async def on_member_remove(member):
 
         await asyncio.to_thread(db.reference(f"users/{target_gd_id}").delete)
         await asyncio.to_thread(db.reference(f"user_data/{target_uid}").delete)
+        await asyncio.to_thread(db.reference(f"directory/{target_gd_id}").delete)
         print(f"[+] Successfully cleaned up data for Discord user {discord_id} (GD: {target_gd_id})")
     except Exception as e:
         print(f"[-] Failed to delete data for member {discord_id}: {e}")
@@ -225,7 +226,25 @@ async def process_unlink_queue():
             return
 
         for uid, u_val in all_user_data.items():
-            if u_val and u_val.get("unlink_requested") is True:
+            if not u_val:
+                continue
+
+            if u_val.get("logout_all_requested") is True:
+                discord_id = u_val.get("discord_id")
+                account_id = u_val.get("account_id")
+                print(f"[*] Processing global logout for GD: {account_id}, Discord: {discord_id}")
+
+                new_uid = uuid.uuid4().hex
+                new_data = dict(u_val)
+                new_data.pop("logout_all_requested", None)
+
+                await asyncio.to_thread(db.reference(f"user_data/{new_uid}").set, new_data)
+                await asyncio.to_thread(db.reference(f"user_data/{uid}").delete)
+
+                print(f"[+] Successfully reset UID for {account_id}")
+                continue
+
+            if u_val.get("unlink_requested") is True:
                 discord_id = u_val.get("discord_id")
                 account_id = u_val.get("account_id")
 
@@ -243,6 +262,7 @@ async def process_unlink_queue():
 
                     await asyncio.to_thread(db.reference(f"users/{account_id}").delete)
                     await asyncio.to_thread(db.reference(f"user_data/{uid}").delete)
+                    await asyncio.to_thread(db.reference(f"directory/{account_id}").delete)
                     print(f"[+] Successfully deleted data for {account_id}")
 
     except Exception as e:
@@ -257,14 +277,16 @@ async def on_presence_update(before, after):
         return
         
     gd_account_id = None
+    target_uid = None
     user_settings = {}
     for uid, u_val in all_user_data.items():
         if u_val and str(u_val.get("discord_id")) == discord_id:
+            target_uid = uid
             gd_account_id = str(u_val.get("account_id"))
             user_settings = u_val.get("settings", {})
             break
             
-    if not gd_account_id:
+    if not gd_account_id or not target_uid:
         return
 
     is_active = await asyncio.to_thread(db.reference(f"users/{gd_account_id}/is_active").get)
@@ -332,12 +354,12 @@ async def on_presence_update(before, after):
             act_data["state"] = ', '.join(activity.artists)
             act_data["assets"]["large_image"] = activity.album_cover_url
             act_data["assets"]["large_text"] = activity.album
-            act_data["color"] = str(activity.color) if activity.color else None # So it turns out this only returns a single color... but I'm not changing it because I already added the thing on the client so uhh yeah :3
+            act_data["color"] = str(activity.color) if activity.color else None 
             
             if hasattr(activity, 'duration') and activity.duration:
                 act_data["duration"] = int(activity.duration.total_seconds())
 
-        # 5. Standard Rich Presence
+        # Standard Rich Presence
         else:
             if hasattr(activity, 'large_image_url') and activity.large_image_url:
                 act_data["assets"]["large_image"] = activity.large_image_url
@@ -355,5 +377,37 @@ async def on_presence_update(before, after):
         await asyncio.to_thread(db.reference(f"users/{gd_account_id}/rpc").set, rpc_list)
     except Exception as e:
         print(f"[-] Failed to update RPC for {gd_account_id}: {e}")
+
+    try:
+        dir_ref = db.reference(f"directory/{gd_account_id}")
+        
+        if after.status == discord.Status.offline or user_settings.get("dir_listing", True) is False or len(rpc_list) == 0:
+            await asyncio.to_thread(dir_ref.delete)
+        else:
+            first_rpc = rpc_list[0]
+            
+            type_map = {
+                0: "Playing",
+                1: "Streaming",
+                2: "Listening to",
+                3: "Watching",
+                5: "Competing in"
+            }
+            type_str = type_map.get(first_rpc["type"], "Playing")
+            rpc_name = f"{type_str} {first_rpc['name']}"
+            
+            dir_data = {
+                "rpc_name": rpc_name,
+                "image_url": first_rpc["assets"]["large_image"]
+            }
+            
+            extra_count = len(rpc_list) - 1
+            if extra_count > 0:
+                dir_data["extra"] = str(extra_count)
+                
+            await asyncio.to_thread(dir_ref.set, dir_data)
+            
+    except Exception as e:
+        print(f"[-] Failed to update directory for {gd_account_id}: {e}")
 
 bot.run(os.getenv("DISCORD_BOT_TOKEN"))

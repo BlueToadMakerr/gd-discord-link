@@ -274,7 +274,8 @@ void AuthPopup::showReauthPopup(int accountID, std::function<void()> successCall
         "Relink Discord RPC",
         "<cy>You need to relink your Discord account to GD!</c>\n\n"
         "We lost your UID that is required to manage your account on here...\n"
-        "This usually happens whenever you use a diffrent device with this mod.\n",
+        "This usually happens whenever you use a diffrent device with this mod, "
+        "or if you requested to log out before.",
         "Cancel", "Auth",
         [accountID, successCallback](auto, bool btn2) {
             if (btn2) {
