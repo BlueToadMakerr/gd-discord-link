@@ -11,8 +11,8 @@ define('FIREBASE_DB_URL', 'Firebase DB link');
 define('SERVICE_ACCOUNT_PATH', __DIR__ . '/path to the service creds');
 
 // Argon API
-define('ARGON_API_URL', 'Argon | For example: https://argon.globed.dev/v1/validation/check');
+define('ARGON_API_URL', 'Argon API | For example: https://argon.globed.dev/v1/validation/check');
 
 // Secret Key for signing state tokens
-define('STATE_SECRET_KEY', 'Just random spam lol. Used to sign state keys to make sure they are not tampered with');
+define('STATE_SECRET_KEY', 'Just random spam lol. Used to sign state keys to make sure they are not tampered with (MAKE SURE THIS STAYS A SECRET)');
 ?>

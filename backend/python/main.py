@@ -59,6 +59,62 @@ async def on_ready():
         process_queue.start()
     if not process_unlink_queue.is_running():
         process_unlink_queue.start()
+    if not sync_members.is_running():
+        sync_members.start()
+
+@tasks.loop(hours=1)
+async def sync_members():
+    try:
+        await bot.wait_until_ready()
+        guild = bot.get_guild(int(TARGET_GUILD_ID))
+        if not guild:
+            print("[-] Sync: Target guild not found.")
+            return
+
+        all_user_data = await asyncio.to_thread(db.reference("user_data").get)
+        if all_user_data is None:
+            all_user_data = {}
+
+        db_discord_map = {}
+        for uid, u_val in all_user_data.items():
+            if u_val and "discord_id" in u_val:
+                disc_id = str(u_val["discord_id"])
+                db_discord_map[disc_id] = {
+                    "uid": uid,
+                    "account_id": str(u_val.get("account_id"))
+                }
+
+        guild_member_ids = {str(member.id) for member in guild.members if not member.bot}
+        db_discord_ids = set(db_discord_map.keys())
+
+        db_only_ids = db_discord_ids - guild_member_ids
+        for disc_id in db_only_ids:
+            data = db_discord_map[disc_id]
+            uid = data["uid"]
+            acc_id = data["account_id"]
+            
+            print(f"[*] Removing DB entries for Discord {disc_id} (not in server anymore)")
+            await asyncio.to_thread(db.reference(f"users/{acc_id}").delete)
+            await asyncio.to_thread(db.reference(f"user_data/{uid}").delete)
+            await asyncio.to_thread(db.reference(f"directory/{acc_id}").delete)
+
+        guild_only_ids = guild_member_ids - db_discord_ids
+        for disc_id in guild_only_ids:
+            if int(disc_id) == guild.owner_id:
+                continue
+                
+            member = guild.get_member(int(disc_id))
+            if member:
+                print(f"[*] Kicking Discord user {disc_id} (not in DB)")
+                try:
+                    await member.kick(reason="User not found in the Database")
+                except Exception as e:
+                    print(f"[-] Sync: Failed to kick {disc_id}: {e}")
+
+        print("[+] Sync complete!")
+
+    except Exception as e:
+        print(f"[-] Error trying to sync: {e}")
 
 @tasks.loop(seconds=3)
 async def process_queue():
