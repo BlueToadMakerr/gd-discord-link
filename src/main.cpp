@@ -11,6 +11,18 @@
 #include "RpcDisplay.hpp"
 #include "RpcSettings.hpp"
 #include "directory.hpp"
+/*
+    Don't know why Im updating this.. mod was rejected for being "vibecoded" anyways..
+    Which.. to be fair directory.cpp was.. and other files only had some parts vibecoded which was because me stupid. The rest of the mod wasn't though...
+    But, I can't change their ruling as they have "final say", I don't want to communicate with them, and rewriting is pointless..
+
+    The proof is Gemini literally says I have invalid syntax TwT
+
+
+    Im not too upset because I knew the chance of this being accepted was really, really low.. Mainly because it requires authing a bot to join servers for you
+    and most people see that as.. unsafe.. (Despite the entire backend also being in here but most people will see the "Join servers for you" and see it as untrustworthy)
+    Did not think vibecode would be the reason though...
+*/
 
 using namespace geode::prelude;
 

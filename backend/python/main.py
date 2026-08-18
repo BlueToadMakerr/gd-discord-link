@@ -434,10 +434,11 @@ async def on_presence_update(before, after):
     except Exception as e:
         print(f"[-] Failed to update RPC for {gd_account_id}: {e}")
 
+    # Ok this part was too.. but again... the entire directory part I was just rushing on..
     try:
         dir_ref = db.reference(f"directory/{gd_account_id}")
         
-        if after.status == discord.Status.offline or user_settings.get("dir_listing", True) is False or len(rpc_list) == 0:
+        if user_settings.get("dir_listing", True) is False or len(rpc_list) == 0:
             await asyncio.to_thread(dir_ref.delete)
         else:
             first_rpc = rpc_list[0]

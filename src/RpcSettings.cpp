@@ -33,7 +33,7 @@ bool RpcSettingsPopup::init(int accountID) {
     m_accountID = accountID;
     m_uid = Mod::get()->getSavedValue<std::string>("uid");
     
-    this->setTitle("RPC Settings");
+    this->setTitle("Settings");
     
     m_discordIdLabel = CCLabelBMFont::create("Fetching info...", "chatFont.fnt");
     m_discordIdLabel->setPosition({m_size.width / 2.f, m_size.height - 45.f});
@@ -252,7 +252,7 @@ void RpcSettingsPopup::updateSettings() {
         web::WebRequest().bodyString(payload).post(url),
         [](web::WebResponse response) {
             if (!response.ok()) {
-                log::error("Failed to update settings in Firebase!");
+                Notification::create("Failed to update settings!", NotificationIcon::Error, 1.0f);
             }
         }
     );
