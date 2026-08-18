@@ -22,6 +22,8 @@
     Im not too upset because I knew the chance of this being accepted was really, really low.. Mainly because it requires authing a bot to join servers for you
     and most people see that as.. unsafe.. (Despite the entire backend also being in here but most people will see the "Join servers for you" and see it as untrustworthy)
     Did not think vibecode would be the reason though...
+
+    I also relized that the file I published to Geode from GitHub was the **wrong one** TwT hjvjcefhkjlhkjdfhkjhviorhvj I hate GitHub's caching feature...
 */
 
 using namespace geode::prelude;
